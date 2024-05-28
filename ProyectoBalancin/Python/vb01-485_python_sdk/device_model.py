@@ -92,7 +92,7 @@ class DeviceModel:
 
     def __init__(self, deviceName, portName, baud, ADDR):
         # print("初始化设备模型")
-        print("Inicializar el modelo del dispositivo")
+        print("Inicializar el modelo del dispositivo\n")
         # 设备名称（自定义） Device Name
         self.deviceName = deviceName
         # 串口号 Serial port number
@@ -142,12 +142,12 @@ class DeviceModel:
         try:
             self.serialPort = serial.Serial(self.serialConfig.portName, self.serialConfig.baud, timeout=0.5)
             self.isOpen = True
-            print("{}Abierto ".format(self.serialConfig.portName))
+            print("{} Abierto ".format(self.serialConfig.portName))
             # print("{}已打开".format(self.serialConfig.portName))
             # 开启一个线程持续监听串口数据 Start a thread to continuously listen to serial port data
             t = threading.Thread(target=self.readDataTh, args=("Data-Received-Thread", 10,))
             t.start()
-            print("El dispositivo se ha encendido")
+            print("\nEl dispositivo se ha encendido")
             # print("设备打开成功")
         except SerialException:
             print("Abrir " + self.serialConfig.portName + " ha fallado")
