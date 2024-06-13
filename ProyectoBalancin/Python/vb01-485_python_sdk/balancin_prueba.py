@@ -3,89 +3,98 @@ import datetime
 import RPi.GPIO as GPIO
 import pigpio
 import device_model
-import sys
 from pynput import keyboard
+import os
 
 """
-    WTVB01-485示例 Example
+    Variables del Programa
 """
-
-# region Common Register Address Comparison Table
-"""
-
-hex    dec      describe        describe en
-
-0x00    0       保存/重启/恢复       SAVE
-0x04    4       串口波特率          BAUD
-
-0x1A    26      设备地址            IICADDR
-
-0x3A    58      振动速度x           VX
-0x3B    59      振动速度y           VY
-0x3C    60      振动速度z           VZ
-
-0x3D    61      振动角度x           ADX
-0x3E    62      振动角度y           ADY
-0x3F    63      振动角度z           ADZ
-
-0x40    64      温度               TEMP
-
-0x41    65      振动位移x           DX
-0x42    66      振动位移y           DY
-0x43    67      振动位移z           DZ    
-
-0x44    68      振动频率x           HZX                
-0x45    69      振动频率y           HZY
-0x46    70      振动频率z           HZZ
-
-0x63    99      截止频率            CUTOFFFREQI
-0x64    100     截止频率            CUTOFFFREQF
-0x65    101     检测周期            SAMPLEFREQ
-
-"""
-# endregion
-
 file = None
+infoFile = ''
 horaYFechaActual = ''
 
+mostrarValores = False
+guardarValores = False
+
+opc = '0'
+speed = 1000
+
+"""
+    Funcion para Crear un Archivo donde se guardaran los valores del Acelerometro
+"""
+def AbrirArchivo():
+    global file
+    global horaYFechaActual
+    global infoFile
+
+    #Creamos un nuevo archivo TXT que tendrá como nombre la hora y fecha actual,
+    horaYFechaActual = str(datetime.datetime.now().strftime('%Y%m%d%H%M%S'))
+    file = open(horaYFechaActual + ".txt", "w")
+    
+    #Encabezados del archivo
+    infoFile = "VelocidadX\tVelocidadY\tVelocidadZ"
+    infoFile +=  "\tÁnguloX\tÁnguloY\tÁnguloZ"
+    infoFile += "\tTemperatura"
+    infoFile += "\tDesplazamientoX\tDesplazamientoY\tDesplazamientoZ"
+    infoFile += "\tFrecuenciaX\tFrecuenciaY\tFrecuenciaZ"
+    infoFile += "\r\n"
+    file.write(infoFile)
+
+"""
+    Función para Cerrar el Archivo
+"""
+def CerrarArchivo():
+    global file
+
+    if file is not None:
+        
+        file.close()
+        file = None
+    
 """
     Funcion para imprimir los valores del acelerometro
 """
 def ImprimirValoresAcelerometro():
     global file
-    global horaYFechaActual
+    global infoFile
+    global mostrarValores
+    global guardarValores
     
     # Impresión de los valores del acelerometro
-    if band:
+    if mostrarValores:
         # v：振动速度 a：振动角度 t：温度 s：振动位移 f：振动频率
         # v:Velocidad de vibración a: Ángulo de vibración t: Temperatura s: Desplazamiento de vibración f: Frecuencia de vibración
         print("vx:{} vy:{} vz:{} ax:{} ay:{} az:{} t:{} sx:{} sy:{} sz:{} fx:{} fy:{} fz:{}".format(device.get("58"),device.get("59"),device.get("60"),device.get("61"),device.get("62"),device.get("63"),device.get("64"),device.get("65"),device.get("66"),device.get("67"),device.get("68"),device.get("69"),device.get("70")))
+    
+    if guardarValores and file is not None:
+        #Guardo los valores en un archivo TXT
+        infoFile = str(format(device.get("58"))) + "\t\t" + str(format(device.get("59"))) + "\t\t" + str(format(device.get("60"))) + "\t\t"
+        infoFile += str(format(device.get("61"))) + "\t\t" + str(format(device.get("62"))) + "\t\t" + str(format(device.get("63"))) + "\t\t"
+        infoFile += str(format(device.get("64"))) + "\t\t"
+        infoFile += str(format(device.get("65"))) + "\t\t" + str(format(device.get("66"))) + "\t\t" + str(format(device.get("67"))) + "\t\t"
+        infoFile += str(format(device.get("68"))) + "\t\t" + str(format(device.get("69"))) + "\t\t" + str(format(device.get("70"))) + "\t\t"
+        infoFile += "\r\n"
         
-    #Guardo los valores en un archivo TXT
-    file = open(horaYFechaActual + ".txt", "a+")
-    
-    infoFile = str(format(device.get("58"))) + "\t\t" + str(format(device.get("59"))) + "\t\t" + str(format(device.get("60"))) + "\t\t"
-    infoFile += str(format(device.get("61"))) + "\t\t" + str(format(device.get("62"))) + "\t\t" + str(format(device.get("63"))) + "\t\t"
-    infoFile += str(format(device.get("64"))) + "\t\t"
-    infoFile += str(format(device.get("65"))) + "\t\t" + str(format(device.get("66"))) + "\t\t" + str(format(device.get("67"))) + "\t\t"
-    infoFile += str(format(device.get("68"))) + "\t\t" + str(format(device.get("69"))) + "\t\t" + str(format(device.get("70"))) + "\t\t"
-    infoFile += "\r\n"
-    
-    file.write(infoFile)
-    file.close()
+        file.write(infoFile)
+        #file.close()
 
 """
     Función para mostrar un MENU cuando se presione la tecla 'a'
 """
 def on_press(key):
-    global band
+    global mostrarValores
+    global guardarValores
+    global speed
+    global opcS
     
-    if key == keyboard.KeyCode(97):
+    i=0
+    
+    if key == keyboard.KeyCode.from_char('a'):
         #Cuando se presiona la tecla 'a' minuscula se muestre un menú
-        band = False
+        mostrarValores = False
         opc = '0'
         
-        while(band==False and opc!='2'):
+        while not mostrarValores and opc!='2':
             
             if(opc!='1'):
         
@@ -98,36 +107,60 @@ def on_press(key):
             
             if opc == '1':
                 #Control de velocidad del motor
-                print('\nCambiar velocidad del motor')
+                print('\nCAMBIAR VELOCIDAD DEL MOTOR')
                 print('Ingrese un valor de 1000 a 2000: ')
-                speed = input()
-                speed = float(speed)
+                speed = int(input())
+                
                 if speed >= 1000 and speed <= 2000:
                     pi.set_servo_pulsewidth(ESC_GPIO,speed)
-                    band = True
+                    mostrarValores = True
                 else:
                     print('El valor ingresado no está dentro del rango de 1000 a 2000, intente de nuevo.\n')
                     opc='1'
-                    band = False
+                    mostrarValores = False
             elif opc == '2':
                 #Terminar Programa
+                i=speed
+                for i in range(speed, 995, -5):
+                    pi.set_servo_pulsewidth(ESC_GPIO,i)
+                    sleep(0.2)
+                
                 pi.set_servo_pulsewidth(ESC_GPIO,0)
-                band = False
+                
+                mostrarValores = False
+                guardarValores = False
                 print("Programa terminado")
-                sys.exit(0)
+                sleep(0.5)
             elif opc == '3':
                 #Salir del menu
                 print("Usted ha salido del menú\n")
-                band = True
+                mostrarValores = True
             else:
                 print("Opción no valida\n")
-                band = False
+                mostrarValores = False
+                
+def FuncionPrincipal():
+    global mostrarValores
+    global guardarValores
+    
+    mostrarValores = True
+    guardarValores = True
+     
+    AbrirArchivo()
+    
+    #file.close()
+   
+    while guardarValores:
+        ImprimirValoresAcelerometro()
+        sleep(0.2)
 
-# Inicializar el listener fuera del bucle
-listener = keyboard.Listener(on_press=on_press)
-listener.start()
-
+    CerrarArchivo()
+      
 try:
+    # Inicializar el listener para detectar eventos del teclado
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
+
     """
         Configuración del acelerometro
     """
@@ -142,38 +175,30 @@ try:
     """
         Configuración del motor
     """
- 
+
     # Configuracion GPIO
     GPIO.setmode(GPIO.BCM)
     pi = pigpio.pi()
     ESC_GPIO = 18 #Pin 12 de la Raspberry
     pi.set_servo_pulsewidth(ESC_GPIO,1000)
     sleep(0.1)
-    
-    #Creamos un nuevo archivo TXT que tendrá como nombre la hora y fecha actual,
-    #para guardar los datos del acelerometro
-    horaYFechaActual = str(datetime.datetime.now().strftime('%Y%m%d%H%M%S')) 
-    file = open(horaYFechaActual + ".txt", "w")                                                                      
-    infoFile = "VelocidadX\tVelocidadY\tVelocidadZ"
-    infoFile +=  "\tÁnguloX\tÁnguloY\tÁnguloZ"
-    infoFile += "\tTemperatura"
-    infoFile += "\tDesplazamientoX\tDesplazamientoY\tDesplazamientoZ"
-    infoFile += "\tFrecuenciaX\tFrecuenciaY\tFrecuenciaZ"
-    infoFile += "\r\n"
-    file.write(infoFile)
-    file.close()
 
-    band = True
+    FuncionPrincipal()
 
-    while True:
+    device.stopLoopRead()
+    device.closeDevice()
+    device = None
+    os._exit(0)
 
-        ImprimirValoresAcelerometro()
-            
-        sleep(0.2)
-    
+        
 except KeyboardInterrupt:
     #Terminar Programa
     pi.set_servo_pulsewidth(ESC_GPIO,0)
-    print("Programa terminado")
-    band = Falsea
-    
+    mostrarValores = False
+    guardarValores = False
+    CerrarArchivo()
+    print("Programa terminado!")
+    os._exit(0)
+except Exception as e:
+    # Manejar excepciones
+    print("Ocurrió un error: ", e)

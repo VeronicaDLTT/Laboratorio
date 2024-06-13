@@ -177,10 +177,10 @@ class DeviceModel:
     def closeDevice(self):
         if self.serialPort is not None:
             self.serialPort.close()
-            print("El puerto esta caido")
+            print("\nEl puerto esta caido\n")
             # print("端口关闭了")
         self.isOpen = False
-        print("El dispositivo esta apagado")
+        print("\nEl dispositivo esta apagado\n")
         # print("设备关闭了")
 
     # region 数据解析 data analysis
